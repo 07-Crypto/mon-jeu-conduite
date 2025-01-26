@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de conduite - Route infinie</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #87CEEB;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background-color: #2f4f4f;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Redimensionner le canvas pour occuper toute la fenêtre
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Définir la voiture
+        const carWidth = 50;
+        const carHeight = 100;
+        let carX = canvas.width / 2 - carWidth / 2;
+        let carY = canvas.height - carHeight - 20;
+        let carSpeed = 5;
+        let carDirection = 0; // 0 = droite, 1 = gauche
+
+        // Définir l'arrière-plan et la route
+        const roadWidth = 400;
+        const roadLaneWidth = 10;
+        const roadSpeed = 3;
+        let roadOffset = 0; // Décalage de l'arrière-plan pour créer un effet de mouvement
+
+        // Obstacles (autres voitures)
+        let obstacles = [];
+        let obstacleSpeed = 2;
+        let obstacleFrequency = 60;
+
+        // Logiciel pour gérer les déplacements
+        function updateCarPosition() {
+            if (carDirection === -1 && carX > (canvas.width - roadWidth) / 2 + roadLaneWidth) {
+                carX -= carSpeed; // Déplacement vers la gauche
+            } else if (carDirection === 1 && carX + carWidth < (canvas.width + roadWidth) / 2 - roadLaneWidth) {
+                carX += carSpeed; // Déplacement vers la droite
+            }
+        }
+
+        // Créer de nouveaux obstacles
+        function createObstacle() {
+            const obstacleWidth = 50;
+            const obstacleHeight = 100;
+            const lanePosition = Math.floor(Math.random() * 3); // Choisir une voie (0 = gauche, 1 = centre, 2 = droite)
+            const obstacleX = (canvas.width - roadWidth) / 2 + lanePosition * (roadWidth / 3) + (roadWidth / 3 - obstacleWidth) / 2;
+            const obstacleY = -obstacleHeight;
+            obstacles.push({ x: obstacleX, y: obstacleY, width: obstacleWidth, height: obstacleHeight });
+        }
+
+        // Mettre à jour la position des obstacles
+        function updateObstacles() {
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].y += obstacleSpeed;
+
+                // Supprimer l'obstacle s'il est sorti de l'écran
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        // Dessiner l'arrière-plan (route infinie)
+        function drawBackground() {
+            // Dessiner la route
+            ctx.fillStyle = "#808080";
+            ctx.fillRect((canvas.width - roadWidth) / 2, 0, roadWidth, canvas.height);
+
+            // Dessiner les bandes blanches de la route
+            ctx.fillStyle = "#FFFFFF";
+            for (let i = 0; i < canvas.height; i += 30) {
+                ctx.fillRect((canvas.width - roadWidth) / 2 + roadWidth / 2 - roadLaneWidth / 2, i + roadOffset, roadLaneWidth, 20);
+            }
+
+            // Animer le défilement de la route
+            roadOffset += roadSpeed;
+            if (roadOffset >= 30) {
+                roadOffset = 0;
+            }
+        }
+
+        // Dessiner la voiture
+        function drawCar() {
+            ctx.fillStyle = "#FF0000";
+            ctx.fillRect(carX, carY, carWidth, carHeight);
+        }
+
+        // Dessiner les obstacles
+        function drawObstacles() {
+            ctx.fillStyle = "#0000FF";
+            for (let i = 0; i < obstacles.length; i++) {
+                ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
+            }
+        }
+
+        // Détection de collision
+        function checkCollision() {
+            for (let i = 0; i < obstacles.length; i++) {
+                if (carX < obstacles[i].x + obstacles[i].width &&
+                    carX + carWidth > obstacles[i].x &&
+                    carY < obstacles[i].y + obstacles[i].height &&
+                    carY + carHeight > obstacles[i].y) {
+                    alert("Game Over! Vous avez percuté un obstacle.");
+                    resetGame();
+                }
+            }
+        }
+
+        // Vérification si la voiture quitte la route
+        function checkOutOfRoad() {
+            const leftLaneBoundary = (canvas.width - roadWidth) / 2 + roadLaneWidth;
+            const rightLaneBoundary = (canvas.width + roadWidth) / 2 - roadLaneWidth;
+
+            if (carX < leftLaneBoundary || carX + carWidth > rightLaneBoundary) {
+                alert("Game Over! Vous avez quitté la route.");
+                resetGame();
+            }
+        }
+
+        // Réinitialiser le jeu
+        function resetGame() {
+            carX = canvas.width / 2 - carWidth / 2;
+            carY = canvas.height - carHeight - 20;
+            obstacles = [];
+        }
+
+        // Gérer les événements clavier
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowLeft") {
+                carDirection = -1; // Gauche
+            } else if (e.key === "ArrowRight") {
+                carDirection = 1; // Droite
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                carDirection = 0; // Arrêter le mouvement horizontal
+            }
+        });
+
+        // Fonction principale de mise à jour du jeu
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Effacer le canvas
+
+            drawBackground();
+            drawCar();
+            updateCarPosition();
+            updateObstacles();
+            drawObstacles();
+            checkCollision();
+            checkOutOfRoad();
+
+            // Créer de nouveaux obstacles à intervalles réguliers
+            if (Math.random() < 0.03) {
+                createObstacle();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Démarrer le jeu
+        gameLoop();
+    </script>
+</body>
+</html>
